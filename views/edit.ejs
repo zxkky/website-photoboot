@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Foto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex justify-center items-center min-h-screen">
+  <div class="bg-white p-6 rounded-xl shadow-md text-center w-full max-w-2xl">
+    <h2 class="text-xl font-bold mb-4 text-blue-600">✏️ Edit Foto</h2>
+
+    <!-- Daftar Foto -->
+    <div id="photo-list" class="flex flex-wrap justify-center gap-2 mb-4"></div>
+
+    <!-- Canvas Kolase -->
+    <canvas id="canvas" class="mx-auto rounded shadow-md mb-4 max-w-[500px] max-h-[600px] border border-gray-300"></canvas>
+
+    <!-- Frame template (opsional, hidden) -->
+    <!-- <img id="frame-template" src="/frames/santa-frame.png" class="hidden"> -->
+
+    <div class="space-y-2">
+      <select id="filter" class="w-full border rounded p-2">
+        <option value="none">Normal</option>
+        <option value="grayscale(1)">Grayscale</option>
+        <option value="sepia(1)">Sepia</option>
+        <option value="invert(1)">Invert</option>
+      </select>
+
+      <select id="frame" class="w-full border rounded p-2">
+        <option value="none">Tanpa Frame</option>
+        <option value="5 black">Hitam</option>
+        <option value="10 white">Putih</option>
+        <option value="8 red">Merah</option>
+        <option value="8 gold">Emas</option>
+      </select>
+
+      <div class="flex justify-center space-x-2 mt-4">
+        <button id="download" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">⬇️ Download</button>
+        <button id="save" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">💾 Simpan</button>
+        <button id="clear-selection" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">🗑️ Hapus Pilihan</button>
+      </div>
+
+      <a href="/" class="block text-red-500 hover:underline mt-3">⬅ Kembali</a>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Gunakan selectedPhotos (bukan selectfoto)
+    let selectedPhotos = [];
+    const imageList = JSON.parse('<%- JSON.stringify(images) %>');
+
+    const photoListDiv = document.getElementById("photo-list");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const filterSelect = document.getElementById("filter");
+    const frameSelect = document.getElementById("frame");
+
+    // Render thumbnail
+    imageList.forEach((src, index) => {
+      const imgThumb = document.createElement("img");
+      imgThumb.src = src;
+      imgThumb.className = "w-20 h-20 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500";
+      imgThumb.onclick = () => selectPhoto(index);
+      photoListDiv.appendChild(imgThumb);
+    });
+
+    // Pilih foto pertama secara otomatis
+    if (imageList.length > 0) {
+      selectPhoto(0);
+    } else {
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "#999";
+      ctx.textAlign = "center";
+      ctx.fillText("Tidak ada foto untuk diedit", canvas.width / 2, canvas.height / 2);
+    }
+
+    function selectPhoto(index) {
+      const imgThumb = photoListDiv.children[index];
+      const isSelected = imgThumb.classList.contains("border-blue-500");
+
+      if (isSelected) {
+        imgThumb.classList.remove("border-blue-500");
+        selectedPhotos = selectedPhotos.filter(i => i !== index);
+      } else {
+        imgThumb.classList.add("border-blue-500");
+        selectedPhotos.push(index);
+      }
+
+      renderCollage();
+    }
+
+    function renderCollage() {
+      if (selectedPhotos.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#999";
+        ctx.textAlign = "center";
+        ctx.fillText("Pilih foto untuk dibuat kolase", canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      const cols = 2;
+      const rows = Math.ceil(selectedPhotos.length / cols);
+      const padding = 10;
+      const frameWidth = frameSelect.value !== "none" ? parseInt(frameSelect.value.split(" ")[0]) : 0;
+
+      // Muat semua gambar untuk hitung ukuran
+      const images = selectedPhotos.map(idx => {
+        const img = new Image();
+        img.src = imageList[idx];
+        return img;
+      });
+
+      // Tunggu semua gambar dimuat
+      Promise.all(images.map(img => {
+        return new Promise(resolve => {
+          if (img.complete) resolve(img);
+          else img.onload = () => resolve(img);
+        });
+      })).then(() => {
+        let maxPhotoWidth = Math.max(...images.map(img => img.width));
+        let maxPhotoHeight = Math.max(...images.map(img => img.height));
+
+        const collageWidth = (maxPhotoWidth + padding * 2) * cols + frameWidth * 2;
+        const collageHeight = (maxPhotoHeight + padding * 2) * rows + frameWidth * 2;
+
+        canvas.width = collageWidth;
+        canvas.height = collageHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Gambar frame luar
+        if (frameSelect.value !== "none") {
+          const [borderWidth, borderColor] = frameSelect.value.split(" ");
+          ctx.lineWidth = parseInt(borderWidth);
+          ctx.strokeStyle = borderColor;
+          ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Gambar foto
+        selectedPhotos.forEach((idx, i) => {
+          const img = images[i];
+          const row = Math.floor(i / cols);
+          const col = i % cols;
+          const x = col * (maxPhotoWidth + padding * 2) + frameWidth + padding;
+          const y = row * (maxPhotoHeight + padding * 2) + frameWidth + padding;
+
+          ctx.save();
+          ctx.filter = filterSelect.value === "none" ? "none" : filterSelect.value;
+          ctx.drawImage(img, x, y, maxPhotoWidth, maxPhotoHeight);
+          ctx.restore();
+        });
+      });
+    }
+
+    // Event listeners
+    filterSelect.addEventListener("change", renderCollage);
+    frameSelect.addEventListener("change", renderCollage);
+
+    document.getElementById("download").onclick = () => {
+      if (selectedPhotos.length === 0) {
+        alert("Pilih minimal satu foto untuk diunduh.");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `kolase_foto_${Date.now()}.png`;
+      a.click();
+    };
+
+    document.getElementById("save").onclick = () => {
+      if (selectedPhotos.length === 0) {
+        alert("Pilih minimal satu foto untuk disimpan.");
+        return;
+      }
+      const imageData = canvas.toDataURL("image/png");
+      fetch("/save-edited", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: 0, image: imageData })
+      })
+      .then(res => res.json())
+      .then(data => alert(data.success ? "✅ Kolase berhasil disimpan!" : "❌ Gagal menyimpan kolase."));
+    };
+
+    document.getElementById("clear-selection").onclick = () => {
+      selectedPhotos = [];
+      [...photoListDiv.children].forEach(img => img.classList.remove("border-blue-500"));
+      renderCollage();
+    };
+  </script>
+</body>
+</html>

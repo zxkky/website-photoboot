@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>PhotoBot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen">
+
+  <!-- Halaman Selamat Datang -->
+  <div id="welcomePage" class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full">
+    <h1 class="text-3xl font-extrabold text-red-600 mb-4">📸 Selamat Datang di <span class="text-gray-800">PhotoBot</span></h1>
+    <p class="text-gray-600 mb-6">Aplikasi sederhana untuk mengambil foto langsung dari kamera perangkatmu.</p>
+    <button id="startBtn" class="bg-blue-500 text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-blue-600 transition">Mulai Ambil Foto</button>
+  </div>
+
+  <!-- Halaman Kamera -->
+  <div id="cameraPage" class="hidden bg-white p-6 rounded-xl shadow-md w-full max-w-md relative">
+    <h1 class="text-2xl font-bold text-center text-red-600 mb-6">PhotoBot</h1>
+
+    <form id="kameraTab" action="/upload-cam" method="POST" class="relative">
+      <button type="button" id="closeCamera" class="absolute -top-4 -right-4 text-gray-600 text-xl bg-gray-200 w-8 h-8 rounded-full hover:bg-gray-300">&times;</button>
+      <video id="video" autoplay playsinline class="w-full rounded-md shadow mb-4"></video>
+      <div class="flex justify-center mb-4">
+        <button type="button" id="snap" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2">📷 Ambil Foto</button>
+        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Upload Semua</button>
+      </div>
+      <div id="hiddenInputs"></div>
+      <h2 class="text-center font-semibold text-gray-700 mb-2">Preview Foto</h2>
+      <div id="previewContainer" class="grid grid-cols-2 gap-2"></div>
+    </form>
+  </div>
+
+  <script>
+    const welcomePage = document.getElementById('welcomePage');
+    const cameraPage = document.getElementById('cameraPage');
+    const startBtn = document.getElementById('startBtn');
+    const video = document.getElementById('video');
+    const snap = document.getElementById('snap');
+    const previewContainer = document.getElementById('previewContainer');
+    const hiddenInputs = document.getElementById('hiddenInputs');
+    const closeCamera = document.getElementById('closeCamera');
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    startBtn.addEventListener('click', () => {
+      welcomePage.classList.add('hidden');
+      cameraPage.classList.remove('hidden');
+      startCamera();
+    });
+
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => alert("Tidak dapat mengakses kamera."));
+    }
+
+    function stopCamera() {
+      const stream = video.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      previewContainer.innerHTML = '';
+      hiddenInputs.innerHTML = '';
+    }
+
+    snap.addEventListener('click', () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/png');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = "relative";
+
+      const img = document.createElement('img');
+      img.src = dataURL;
+      img.className = "w-full rounded shadow";
+
+      const delBtn = document.createElement('button');
+      delBtn.innerHTML = "✖";
+      delBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hover:bg-red-600";
+      delBtn.onclick = () => {
+        wrapper.remove();
+        input.remove();
+      };
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(delBtn);
+      previewContainer.appendChild(wrapper);
+
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'images[]';
+      input.value = dataURL;
+      hiddenInputs.appendChild(input);
+    });
+
+    closeCamera.addEventListener('click', () => {
+      stopCamera();
+      cameraPage.classList.add('hidden');
+      welcomePage.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
