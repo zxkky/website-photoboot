@@ -61,15 +61,16 @@ website-photoboot/
 ├── package.json          # Konfigurasi proyek Node.js
 └── package-lock.json
 ```
-🔧 API Endpoint
-Endpoint	Method	Deskripsi
-```
-/	GET	Halaman utama
-/upload-cam	POST	Upload foto (base64 dari kamera)
-/edit	GET	Halaman edit foto
-/save-edited	POST	Simpan hasil edit foto
-/uploads	Static	Menyajikan file hasil upload
-```
+## 🔧 API Endpoint
+
+| 🛣️ Endpoint | ⚙️ Method | 📝 Deskripsi |
+|--------------|------------|--------------|
+| `/` | **GET** | Halaman utama aplikasi |
+| `/upload-cam` | **POST** | Upload foto dari kamera (base64) ke server |
+| `/edit` | **GET** | Halaman untuk mengedit foto yang diambil |
+| `/save-edited` | **POST** | Menyimpan hasil edit foto ke folder `uploads` |
+| `/uploads` | **Static** | Folder publik untuk menampilkan hasil upload |
+
 🧱 Contoh Konfigurasi Storage Multer
 ```
 const storage = multer.diskStorage({
